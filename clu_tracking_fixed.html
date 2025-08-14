@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLU Tracking</title>
+<style>
+  :root { --bg:#0b0f14; --card:#121922; --accent:#6ee7ff; --text:#e6f0ff; --muted:#94a3b8; --error:#ff6b6b; --ok:#34d399; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         background: linear-gradient(180deg,#0b0f14 0%, #0d1320 100%); color:var(--text); }
+  header { position:sticky; top:0; z-index:10; background:rgba(9,14,22,.75); backdrop-filter: blur(8px);
+           border-bottom:1px solid #1e293b; }
+  .bar { max-width:980px; margin:0 auto; display:flex; gap:.5rem; align-items:center; padding:.65rem .8rem; }
+  .app-title { font-weight:700; letter-spacing:.2px; margin-right: .6rem; }
+  .spacer { flex:1; }
+  .btn { appearance:none; border:1px solid #1f2937; padding:.5rem .7rem; border-radius:.6rem; cursor:pointer;
+         background:var(--card); color:var(--text); transition:all .2s; }
+  .btn:hover { border-color:var(--accent); color:var(--accent); }
+  main { max-width:980px; margin:1.5rem auto; padding:0 1rem; }
+  .card { background:var(--card); border-radius:.8rem; padding:1rem; border:1px solid #1e293b; }
+  input { width:100%; padding:.5rem; border-radius:.5rem; border:1px solid #1e293b; background:#0f172a; color:var(--text); margin-top:.5rem; }
+  input:focus { outline:none; border-color:var(--accent); }
+  .status { margin-top:1rem; padding:.8rem; border-radius:.6rem; background:#0f172a; }
+  .error { color:var(--error); font-weight:600; }
+  .success { color:var(--ok); font-weight:600; }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="app-title">CLU Tracking</div>
+    <button class="btn" onclick="showCreate()">Create Tracking</button>
+    <button class="btn" onclick="showUpdate()">Update Tracking</button>
+    <div class="spacer"></div>
+  </div>
+</header>
+<main>
+  <div class="card">
+    <label>Enter Tracking Code:</label>
+    <input id="trackInput" placeholder="CHM-123-12345678">
+    <button class="btn" style="margin-top:.5rem;" onclick="trackPackage()">Track</button>
+    <div id="result" class="status"></div>
+  </div>
+</main>
+<script>
+const backend = "https://clu-2.onrender.com";
+
+function showCreate(){
+  let pin = prompt("Enter PIN to create tracking:");
+  if(pin !== "0431") return alert("Invalid PIN");
+  let code = prompt("Enter tracking code (CHM-123-12345678):");
+  if(!/^CHM-\d{3}-\d{8}$/.test(code)) return alert("Invalid format");
+  fetch(backend+"/create?code="+encodeURIComponent(code))
+    .then(r=>r.json()).then(data=>{
+      if(data.link && data.link.includes("onrender.com")){
+        alert("Link generation failed");
+      } else {
+        alert("Created: "+code+"\nShare: https://track.clu.charmersbiz.org/?Tracking/tools/trackingcode="+code+"/token="+(data.token||""));
+      }
+    }).catch(()=>alert("Error creating tracking"));
+}
+
+function showUpdate(){
+  let pin = prompt("Enter PIN to update tracking:");
+  if(pin !== "0431") return alert("Invalid PIN");
+  let code = prompt("Enter tracking code to update:");
+  let status = prompt("Enter new tracking status:");
+  fetch(backend+"/update?code="+encodeURIComponent(code)+"&status="+encodeURIComponent(status))
+    .then(r=>r.json()).then(data=>alert("Status updated")).catch(()=>alert("Error updating status"));
+}
+
+function trackPackage(){
+  let code = document.getElementById("trackInput").value.trim();
+  if(!/^CHM-\d{3}-\d{8}$/.test(code)) return document.getElementById("result").innerHTML = '<span class="error">Invalid tracking code format</span>';
+  fetch(backend+"/track?code="+encodeURIComponent(code))
+    .then(r=>r.json()).then(data=>{
+      if(data.error) document.getElementById("result").innerHTML = '<span class="error">'+data.error+'</span>';
+      else document.getElementById("result").innerHTML = '<span class="success">Last update:</span> '+data.status;
+    }).catch(()=>document.getElementById("result").innerHTML = '<span class="error">Error fetching status</span>');
+}
+</script>
+</body>
+</html>
